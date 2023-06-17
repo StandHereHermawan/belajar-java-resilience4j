@@ -25,6 +25,25 @@ public class BulkheadTest {
     @Test
     void testSemaphore() throws InterruptedException {
         Bulkhead bulkhead = Bulkhead.ofDefaults("arief");
+
+        for (int i = 0; i < 1000; i++) {
+            Runnable runnable = Bulkhead.decorateRunnable(bulkhead, () -> slow());
+            new Thread(runnable).start();
+        }
+
+        Thread.sleep(10_000L);
+    }
+
+    @Test //added on metric video segment
+    void testSemaphoreWithMetric() throws InterruptedException {
+        Bulkhead bulkhead = Bulkhead.ofDefaults("arief");
+
+        int availableConcurrentCalls = bulkhead.getMetrics().getAvailableConcurrentCalls();
+        int maxAllowedConcurrentCalls = bulkhead.getMetrics().getMaxAllowedConcurrentCalls();
+
+        log.info(String.valueOf(availableConcurrentCalls));
+        log.info(String.valueOf(maxAllowedConcurrentCalls));
+
         for (int i = 0; i < 1000; i++) {
             Runnable runnable = Bulkhead.decorateRunnable(bulkhead, () -> slow());
             new Thread(runnable).start();

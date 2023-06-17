@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 
 @Slf4j
@@ -25,6 +26,15 @@ public class DecoratorsTest {
         Thread.sleep(  2500L);
         throw new IllegalArgumentException("Error");
     }
+
+    @SneakyThrows
+    public String sayHello(){
+        long value = counter.incrementAndGet();
+        log.info("Say hello " + value);
+        Thread.sleep(  2500L);
+        throw new IllegalArgumentException("Ups");
+    }
+
     @Test
     void testDecorators() throws InterruptedException {
         RateLimiter rateLimiter1 = RateLimiter.of("arief-ratelimiter", RateLimiterConfig.custom()
@@ -48,4 +58,26 @@ public class DecoratorsTest {
 
         Thread.sleep(10_000);
     }
+
+    @Test
+    void testFallback() throws InterruptedException {
+        RateLimiter rateLimiter1 = RateLimiter.of("arief-ratelimiter", RateLimiterConfig.custom()
+                .limitForPeriod(5)
+                .limitRefreshPeriod(Duration.ofMinutes(1))
+                .build());
+
+        Retry retry1 = Retry.of("arief-retry", RetryConfig.custom()
+                .maxAttempts(10)
+                .waitDuration(Duration.ofMillis(10))
+                .build());
+
+        Supplier<String> supplier = Decorators.ofSupplier(() -> sayHello())
+                .withRetry(retry1)
+                .withRateLimiter(rateLimiter1)
+                .withFallback(throwable -> "Hello Guest")
+                .decorate();
+
+        System.out.println(supplier.get());
+    }
+
 }
